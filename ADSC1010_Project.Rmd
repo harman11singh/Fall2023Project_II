@@ -1,0 +1,363 @@
+---
+title: "Premiere League Insights"
+author: "Harman Singh Saggu T00727652, Raunaq Singh Dev T00737367, Nwaokenneya Precious T00727498"
+date: "2023-11-30"
+output: pdf_document
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+
+```{r lib}
+library(dplyr)
+library(ggplot2)
+library(tidyverse)
+library(plotly)
+```
+
+
+```{r load_csv}
+#Reading all csv files
+arsenal <- read.csv("Arsenal.csv", header = TRUE)
+brentford <- read.csv("Brentford.csv", header = TRUE)
+chelsea <- read.csv("Chelsea.csv", header = TRUE)
+crystalpalace <- read.csv("Crystal Palace.csv", header = TRUE)
+tottenham <- read.csv("Tottenham.csv", header = TRUE)
+westham <- read.csv("West Ham United.csv", header = TRUE)
+
+#removing columns
+ars <- arsenal[c(-28,-29),]
+bre <- brentford[c(-28,-29),]
+che <- chelsea[c(-28,-29),]
+cry <- crystalpalace[c(-28,-29),]
+tot <- tottenham[c(-28,-29),]
+ham <- westham[c(-28,-29),]
+
+#changing col names
+colnames(bre)[9] <- "Pressure_Mid_3rd"
+colnames(bre)[10] <- "Pressure_Att_3rd"
+colnames(bre)[11] <- "Passing_Total_Cmp."
+
+```
+
+```{r table}
+#arsenal position table
+table(ars$Pos)
+
+#changing position to DF
+che[19,3]<-'DF'
+che[23,3]<- 'DF'
+tot[18,3]<- 'DF'
+ham[16,3]<- 'DF'
+```
+
+```{r hist_df}
+#removing columns for final data frames to use
+cry <- cry[,!(names(cry) %in% c("X90s","X90s.1"))]
+ham <- ham[,!(names(ham) %in% "X90s")]
+
+#changing positions to Mid Fielders
+ars$Pos[10] <- "MF"
+bre$Pos[21] <- "MF"
+bre$Pos[24] <- "MF"
+che$Pos[5] <- "MF"
+che$Pos[17] <- "MF"
+che$Pos[19] <- "MF"
+tot$Pos[16] <- "MF"
+tot$Pos[21] <- "MF"
+cry$Pos[10] <- "MF"
+cry$Pos[21] <- "MF"
+
+#defenders
+arsDF <- filter(ars, ars$Pos == 'DF')
+breDF <- filter(bre,bre$Pos == 'DF')
+cheDF <- filter(che, che$Pos=='DF')
+cryDF <- filter(cry, cry$Pos=='DF')
+totDF <- filter(tot,tot$Pos=='DF')
+hamDF <- filter(ham,ham$Pos=='DF')
+
+
+#histograms of DF
+par(mfrow = c(2,2)) #for plotting side by side
+hist(arsDF$Tackles_Def_3rd, main = "Histogram of Ars DF Tackle 3",
+     xlab = "Defender Tackles")
+hist(breDF$Tackles_Def_3rd, main = "Histogram of Bre DF Tackle 3",
+     xlab = "Defender Tackles")
+hist(cheDF$Tackles_Def_3rd, main = "Histogram of Che DF Tackle 3",
+     xlab = "Defender Tackles")
+
+```
+
+```{r df_tackles}
+#adding column for team names
+arsDF <- arsDF%>% mutate(Team = "Arsenal")
+breDF <- breDF%>% mutate(Team = "Brentford")
+cheDF <- cheDF%>% mutate(Team = "Chelsea")
+cryDF <- cryDF%>% mutate(Team = "Crystal Palace")
+totDF <- totDF %>% mutate(Team = "Tottenham")
+hamDF <- hamDF %>% mutate(Team = "WestHam")
+
+#defenders data frame
+Defenders <- rbind(arsDF, breDF, cheDF, cryDF, hamDF, totDF)
+
+#adding total tackles, total pressure and total touches for defenders
+Defenders <- Defenders%>%
+  rowwise()%>%
+  mutate(Total_Tackles = sum(c(Tackles_Att_3rd,Tackles_Def_3rd,Tackles_Mid.3rd)), Total_Pressure = sum(c(Pressures_Def_3rd,Pressure_Mid_3rd,Pressure_Att_3rd)),Total_Touches = sum(c(Touches_Def_Pen,Touches_Def_3rd,Touches_Mid_3rd,Touches_Att_3rd,Touches_Att_Pen)))
+
+#adding tackles per matches for defenders
+vis_def <- Defenders%>%
+  select(Player,Age,Team,Total_Tackles,Total_Pressure,Total_Touches,Matches_Played,Minutes_Played)%>%
+  mutate(Tackles_per_matches = Total_Tackles/Matches_Played,Pressure_per_matches = Total_Pressure/Matches_Played)
+
+```
+
+
+```{r viz1}
+#boxplot for total pressure and total tackles defenders
+par(mfrow=c(2,1))
+ggplot(vis_def)+
+  geom_boxplot(aes(x=Total_Pressure,y=Total_Tackles, color = Team))+
+  labs(
+    x = "Total Pressure",
+    y = "Total Tackles",
+    title = "Boxplot of Total Pressure and Total Tackles"
+  )
+
+#boxplot for pressure per matches and tackles per matches
+ggplot(vis_def, aes(x=Pressure_per_matches, y = Tackles_per_matches, color = Team))+
+  geom_boxplot()+
+  labs(
+    x = "Pressure per Match",
+    y = "Tackles per Match",
+    title = "Boxplot of Pressure and Tackles per Match "
+  )
+```
+
+```{r viz2}
+#scatterplot for matches played and total tackles defenders
+scatterplot_DF <- ggplot(vis_def)+
+  geom_point(aes(x=Matches_Played,y=Total_Tackles, color = Team))+
+  labs(
+    x = "Matches Played",
+    y = "Total Tackles",
+    title = "Scatterplot of Matches Played and Total Tackles"
+  )
+
+
+scatterplot_DF
+
+```
+
+
+```{r viz3}
+#scatterplot of matches played and total pressure defenders
+ pressure_scat <- ggplot(vis_def)+
+  geom_point(aes(x=Matches_Played,y=Total_Pressure, color = Team))+
+  labs(
+    x = "Matches Played",
+    y = "Total Pressure",
+    title = "Scatterplot of Matches Played and Total Pressure"
+  )
+
+pressure_scat
+```
+
+
+
+```{r fw}
+#Changing position to Forward
+ars$Pos[2] <- "FW"
+ars$Pos[8] <- "FW"
+ars$Pos[12] <- "FW"
+ars$Pos[17] <- "FW"
+bre$Pos[4] <- "FW"
+bre$Pos[16] <- "FW"
+bre$Pos[25] <- "FW"
+che$Pos[8] <- "FW"
+che$Pos[15] <- "FW"
+che$Pos[16] <- "FW"
+che$Pos[18] <- "FW"
+tot$Pos[5] <- "FW"
+tot$Pos[9] <- "FW"
+tot$Pos[20] <- "FW"
+tot$Pos[22] <- "FW"
+cry$Pos[14] <- "FW"
+ham$Pos[6] <- "FW"
+ham$Pos[9] <- "FW"
+ham$Pos[17] <- "FW"
+ham$Pos[21] <- "FW"
+
+#Forwards
+arsFW <- filter(ars, ars$Pos == 'FW')
+breFW <- filter(bre, bre$Pos == 'FW')
+cheFW <- filter(che, che$Pos=='FW')
+cryFW <- filter(cry, cry$Pos=='FW')
+totFW <- filter(tot,tot$Pos=='FW')
+hamFW <- filter(ham,ham$Pos=='FW')
+
+#adding column team name
+arsFW <- arsFW%>% mutate(Team = "Arsenal")
+breFW <- breFW%>% mutate(Team = "Brentford")
+cheFW <- cheFW%>% mutate(Team = "Chelsea")
+cryFW <- cryFW%>% mutate(Team = "Crystal Palace")
+totFW <- totFW %>% mutate(Team = "Tottenham")
+hamFW <- hamFW %>% mutate(Team = "WestHam")
+
+
+
+#new table for all forwards
+newFW <- rbind(arsFW, breFW, cheFW, cryFW, hamFW, totFW)
+
+#adding total tackles, total pressures and total touches for Forwards
+newFW <- newFW%>%
+  rowwise()%>%
+  mutate(Total_Tackles = sum(c(Tackles_Att_3rd,Tackles_Def_3rd,Tackles_Mid.3rd)), Total_Pressure = sum(c(Pressures_Def_3rd,Pressure_Mid_3rd,Pressure_Att_3rd)),Total_Touches = sum(c(Touches_Def_Pen,Touches_Def_3rd,Touches_Mid_3rd,Touches_Att_3rd,Touches_Att_Pen)))
+
+#arranging the forwards df
+top_fw_plaayer <- head(arrange(newFW,desc(Gls)), 5)
+
+#scatterplot for total touches by team Forwards
+touches_goal <- ggplot(newFW,aes(x = Total_Touches,y = Gls, col = Team))+
+  geom_point()+
+  facet_wrap(~Team)+
+  labs(
+    x = "Total Touches",
+    y = "Goals",
+    title = "scatterplot of Total Touches by Goals"
+  )
+
+touches_goal
+
+top_fw <- ggplot(top_fw_plaayer, aes(x = Player, y = Gls, fill = Team)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(
+    x = "Players",
+    y = "Goals",
+    title = "Top 5 Goals Scorers"
+  )
+
+top_fw
+```
+
+
+
+```{r midfielders}
+#MF
+arsMF <- filter(ars, ars$Pos == 'MF')
+breMF <- filter(bre,bre$Pos == 'MF')
+cheMF <- filter(che, che$Pos=='MF')
+cryMF <- filter(cry, cry$Pos=='MF')
+totMF <- filter(tot,tot$Pos=='MF')
+hamMF <- filter(ham,ham$Pos=='MF')
+
+#adding column for team names
+arsMF <- arsMF%>% mutate(Team = "Arsenal")
+breMF <- breMF%>% mutate(Team = "Brentford")
+cheMF <- cheMF%>% mutate(Team = "Chelsea")
+cryMF <- cryMF%>% mutate(Team = "Crystal Palace")
+totMF <- totMF %>% mutate(Team = "Tottenham")
+hamMF <- hamMF %>% mutate(Team = "WestHam")
+
+#mid fielders data frame
+newMF <- rbind(arsMF, breMF, cheMF, cryMF, totMF, hamMF)
+
+#adding total tackles, total prressures and total touches for midfielders
+newMF <- newMF %>%
+  rowwise() %>%
+  mutate(Total_Tackles = sum(c(Tackles_Att_3rd,Tackles_Def_3rd,Tackles_Mid.3rd)), Total_Pressure = sum(c(Pressures_Def_3rd,Pressure_Mid_3rd,Pressure_Att_3rd)),Total_Touches = sum(c(Touches_Def_Pen,Touches_Def_3rd,Touches_Mid_3rd,Touches_Att_3rd,Touches_Att_Pen)))
+
+top_players <- head(arrange(newMF, desc(Ast)), 5)
+
+top_bar <- ggplot(top_players, aes(x = Player, y = Ast, fill = Team)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(
+    x = "Players",
+    y = "Assists",
+    title = "Top 5 Assists Providers by Team"
+  )
+
+#arranging top players for midfielders
+top_players2 <- head(arrange(newMF, desc(xA)), 5)
+
+#barplot of top players by team midfielders position
+top_bar2 <- ggplot(top_players2, aes(x = Player, y = xA, fill = Team)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(
+    x = "Players",
+    y = "Assists",
+    title = "Top 5 Expected Assists Providers by Team"
+  )
+
+
+#bubble chart of total touches by team midfielders
+bubble <- ggplot(newMF, aes(x = Team, y = Total_Touches, size = Touches_Att_Pen, color = Team)) +
+  geom_point(alpha = 0.7) +
+  labs(
+    x = "Team",
+    y = "Total Touches",
+    title = "Bubble Chart of Total Touches and Touches in Opposition Penalty Box by Team"
+  )
+
+#scatterplot of total touches by team midfielders
+scatter_touches <- ggplot(newMF, aes(x = Total_Touches, y = Ast)) +
+  geom_point() +
+  facet_wrap(~Team) +
+  labs(
+    x = "Total Touches",
+    y = "Assists",
+    title = "Scatter Plot of Total Touches and Assists by Team"
+  )
+top_bar
+top_bar2
+bubble
+scatter_touches
+```
+
+```{r functions_summarise}
+#creating a data frame with defenders and midfielders
+df_mf <- rbind(Defenders, newMF)
+
+
+#Creating a function to summarise average minutes played, average defender
+#tackles(Tackles_Def_3rd), average goals(Gls) and average assists of players in
+#defenders and mid-fileder positions
+player_info <- function(team, position){
+  df_mf %>% 
+    group_by(Pos = position) %>% 
+    filter(Team == team) %>%
+    summarise(Player = Player, Team = Team, Avg_Def_Tackle = Tackles_Def_3rd/Matches_Played,
+              Avg_Goals = Gls/Matches_Played, Avg_Assists = Ast/Matches_Played,
+              Avg_Min_Played = as.numeric(Minutes_Played)/Matches_Played)
+}
+
+player_info("Brentford", "MF")
+```
+
+```{r loop}
+#Creating a for loop to extract first fifty player name, team name, position and 
+#total touches in df_mf data frame
+for(i in 1:50){
+  player <- df_mf$Player[i]
+  team <- df_mf$Team[i]
+  pos <- df_mf$Pos[i]
+  total_touches <- df_mf$Total_Touches[i]
+  info <- c(player, team, total_touches, pos)
+  print(info)
+}
+```
+
+```{r tidy}
+#Creating a function using  tidyr to make data wider in newFW data frame by
+#extracting total tackles of players of a specific team
+fw_wide <- function(team_name){
+    select(newFW, Player, Team , Total_Tackles, Pos) %>%
+  filter(Team == team_name) %>% 
+  spread(key = Player, value = Total_Tackles)
+}
+
+fw_wide("Chelsea")
+fw_wide("Brentford")
+```
+
